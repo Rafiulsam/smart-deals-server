@@ -33,13 +33,39 @@ const client = new MongoClient(uri, {
 });
 
 const productsCollection = client.db("smartDB").collection("products");
+const bidCollection = client.db("smartDB").collection("bids");
+const usersCollection = client.db("smartDB").collection("users");
 
 async function run() {
   try {
     await client.connect();
 
+    // apis for users
+
+    app.post ("/users", async (req, res)=>{
+      const newUser = req.body;
+      const email = newUser.email;
+      const query = { email: email };
+     const existingUser = await usersCollection.findOne(query);
+     if(existingUser){
+       res.send({ message: "User already exists" });
+     }  else{
+      const result = await usersCollection.insertOne(newUser);
+      res.send(result);
+     }
+      
+    })
+
+    //apis for products
     app.get('/products', async (req, res) => {
-      const products = await productsCollection.find().toArray();
+       console.log(req.query);
+      const email = req.query.email;
+      const query = {};
+      if (email) {
+        query.email = email;
+      }
+      const cursor = productsCollection.find(query);
+      const products = await cursor.toArray();
       res.send(products);
     });
 
@@ -76,6 +102,28 @@ async function run() {
       const result = await productsCollection.deleteOne(query);
       res.send(result);
     });
+
+
+    // api for bids
+
+    app.get('/bids', async (req, res)=>{
+      const email = req.query.email;
+      const query = {};
+      if(email){
+        query.buyer_email = email;
+      } 
+      const result = await bidCollection.find(query).toArray();
+      res.send(result);
+    })
+
+    app.post('/bids', async (req, res)=>{
+      const bid = req.body;
+      const result = await bidCollection.insertOne(bid);
+      res.status(201).send(result);
+    })
+
+
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("Successfully connected to MongoDB!");
